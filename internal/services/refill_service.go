@@ -2,7 +2,6 @@ package services
 
 import (
 	"encoding/json"
-
 	"go-machine-events/internal/events"
 	"go-machine-events/internal/machine"
 	"go-machine-events/internal/pubsub"
@@ -24,26 +23,32 @@ func NewRefillService(machineRepo *machine.MachineRepository, ps *pubsub.PubSub)
 }
 
 func (s *RefillService) HandleRefill(event events.MachineRefillEvent) {
-	machine, exists := s.machineRepo.GetMachine(event.GetMachineID())
-	if !exists {
-		s.log.Error("Machine %s not found", event.GetMachineID())
-		return
-	}
+    if event.Refill <= 0 {
+        s.log.Error("Invalid refill amount %d for machine %s", event.Refill, event.GetMachineID())
+        return
+    }
 
-	machine.StockLevel += event.Refill
-	s.log.Info("Machine %s refilled by %d, new stock: %d", event.GetMachineID(), event.Refill, machine.StockLevel)
+    machine, exists := s.machineRepo.GetMachine(event.GetMachineID())
+    if !exists {
+        s.log.Error("Machine %s not found", event.GetMachineID())
+        return
+    }
 
-	if machine.StockLevel >= 3 && machine.LowStockWarning {
-		machine.LowStockWarning = false
-		stockOkEvent := events.StockLevelOkEvent{MachineID: event.GetMachineID()}
+    machine.StockLevel += event.Refill
+    s.log.Info("Machine %s refilled by %d, new stock: %d", event.GetMachineID(), event.Refill, machine.StockLevel)
 
-		eventData, err := json.Marshal(stockOkEvent)
-		if err != nil {
-			s.log.Error("Error marshaling StockLevelOkEvent: %v", err)
-			return
-		}
+    // Handle low stock warning
+    if machine.StockLevel >= 3 && machine.LowStockWarning {
+        machine.LowStockWarning = false
+        stockOkEvent := events.StockLevelOkEvent{MachineID: event.GetMachineID()}
 
-		s.pubsub.PublishEvent(eventData)
-		s.log.Info("StockLevelOkEvent sent for Machine %s", event.GetMachineID())
-	}
+        eventData, err := json.Marshal(stockOkEvent)
+        if err != nil {
+            s.log.Error("Error marshaling StockLevelOkEvent: %v", err)
+            return
+        }
+
+        s.pubsub.PublishEvent(eventData)
+        s.log.Info("StockLevelOkEvent sent for Machine %s", event.GetMachineID())
+    }
 }

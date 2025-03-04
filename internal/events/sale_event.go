@@ -4,11 +4,16 @@ package events
 type MachineSaleEvent struct {
 	Sold      int    `json:"sold"`
 	MachineID string `json:"machine_id"`
+	Quantity  int    `json:"quantity"` 
 }
 
 // **LowStockWarningEvent ใช้เมื่อสต็อกต่ำ**
 type LowStockWarningEvent struct {
 	MachineID string `json:"machine_id"`
+}
+
+type StockLevelLowEvent struct {
+    MachineID string `json:"machine_id"`
 }
 
 // Implement IEvent สำหรับ MachineSaleEvent

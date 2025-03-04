@@ -24,33 +24,32 @@ func NewSaleService(machineRepo *machine.MachineRepository, ps *pubsub.PubSub) *
 }
 
 func (s *SaleService) HandleSale(event events.MachineSaleEvent) {
-	machineID := event.GetMachineID()
-	machine, exists := s.machineRepo.GetMachine(machineID)
+    machine, exists := s.machineRepo.GetMachine(event.MachineID) // ใช้ event.MachineID แทน event.GetMachineID() ถ้าใช้โครงสร้างนี้
+    if !exists {
+        s.log.Error("Machine %s not found", event.MachineID)
+        return
+    }
 
-	if !exists {
-		s.log.Error("Machine %s not found", machineID)
-		return
-	}
+    if machine.StockLevel < event.Quantity {
+        s.log.Info("Not enough stock for machine %s to sell %d items", event.MachineID, event.Quantity)
+        return
+    }
 
-	if machine.StockLevel < event.Sold {
-		s.log.Error("Machine %s has insufficient stock", machineID)
-		return
-	}
+    machine.StockLevel -= event.Quantity
+    s.log.Info("Machine %s sold %d items, new stock: %d", event.MachineID, event.Quantity, machine.StockLevel)
 
-	machine.StockLevel -= event.Sold
-	s.log.Info("Machine %s sold %d, new stock: %d", machineID, event.Sold, machine.StockLevel)
+    // Handle low stock warning
+    if machine.StockLevel < 3 && !machine.LowStockWarning {
+        machine.LowStockWarning = true
+        lowStockEvent := events.StockLevelLowEvent{MachineID: event.MachineID}
 
-	if machine.StockLevel < 3 && !machine.LowStockWarning {
-		machine.LowStockWarning = true
-		lowStockEvent := events.LowStockWarningEvent{MachineID: machineID}
+        eventData, err := json.Marshal(lowStockEvent)
+        if err != nil {
+            s.log.Error("Error marshaling StockLevelLowEvent: %v", err)
+            return
+        }
 
-		eventData, err := json.Marshal(lowStockEvent)
-		if err != nil {
-			s.log.Error("Error marshaling LowStockWarningEvent: %v", err)
-			return
-		}
-
-		s.pubsub.PublishEvent(eventData)
-		s.log.Info("LowStockWarningEvent sent for Machine %s", machineID)
-	}
+        s.pubsub.PublishEvent(eventData)
+        s.log.Info("StockLevelLowEvent sent for Machine %s", event.MachineID)
+    }
 }
