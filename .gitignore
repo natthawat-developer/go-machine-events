@@ -1,0 +1,57 @@
+# Binary & Build Files
+/go-machine-events
+/go-machine-events.exe
+/go-machine-events.dmg
+/go-machine-events.app
+/go-machine-events.tar.gz
+/go-machine-events.zip
+
+# Logs & Debug
+*.log
+*.out
+*.test
+*.prof
+trace.out
+heap.out
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+*.bak
+
+# Go Modules & Dependencies
+bin/
+vendor/
+*.sum
+go.sum
+go.work
+go.work.sum
+
+# Compiled Object Files
+*.o
+*.a
+*.so
+
+# Temporary & Cache Files
+tmp/
+temp/
+*.tmp
+*.cache
+*.lock
+node_modules/
+coverage.out
+
+# Docker
+docker-compose.override.yml
+.env
+.env.local
+
+# Kubernetes
+*.kubeconfig
+
+# Ignore config.yaml (Optional: Uncomment if you don’t want to commit config)
+# config/config.yaml
