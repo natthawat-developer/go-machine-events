@@ -1,7 +1,7 @@
 package kafka
 
 import (
-	"log"
+	"go-machine-events/pkg/logger"
 
 	"github.com/IBM/sarama"
 )
@@ -10,10 +10,13 @@ import (
 type Producer struct {
 	producer sarama.SyncProducer
 	topic    string
+	log      *logger.Logger // ✅ ใช้ logger
 }
 
 // NewProducer สร้าง Producer ใหม่
 func NewProducer(brokers []string, topic string) (*Producer, error) {
+	log := logger.NewLogger() // ✅ ใช้ logger
+
 	config := sarama.NewConfig()
 	config.Producer.RequiredAcks = sarama.WaitForAll
 	config.Producer.Return.Successes = true
@@ -21,12 +24,16 @@ func NewProducer(brokers []string, topic string) (*Producer, error) {
 
 	producer, err := sarama.NewSyncProducer(brokers, config)
 	if err != nil {
+		log.Error("Error creating Kafka producer: %v", err) // ✅ ใช้ log.Error()
 		return nil, err
 	}
+
+	log.Info("Kafka producer initialized successfully")
 
 	return &Producer{
 		producer: producer,
 		topic:    topic,
+		log:      log, // ✅ ใช้ logger
 	}, nil
 }
 
@@ -39,10 +46,10 @@ func (p *Producer) Publish(message []byte) error {
 
 	_, _, err := p.producer.SendMessage(msg)
 	if err != nil {
-		log.Printf("Error publishing message to Kafka: %v", err)
+		p.log.Error("Error publishing message to Kafka: %v", err) // ✅ ใช้ log.Error()
 		return err
 	}
 
-	log.Println("Message published successfully")
+	p.log.Info("Message published successfully to Kafka")
 	return nil
 }

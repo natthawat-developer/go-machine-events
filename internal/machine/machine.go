@@ -1,45 +1,67 @@
 package machine
 
 import (
-	"fmt"
+	"go-machine-events/pkg/logger"
+	"sync"
 )
 
-// **SaleSubscriber รับ event เมื่อมีการขายสินค้า**
-type SaleSubscriber struct {
-	repo *MachineRepository
+
+type Machine struct {
+	ID              string
+	StockLevel      int
+	LowStockWarning bool
 }
 
-// **NewSaleSubscriber สร้าง Subscriber สำหรับ Sale Events**
-func NewSaleSubscriber(repo *MachineRepository) *SaleSubscriber {
-	return &SaleSubscriber{repo: repo}
+
+type MachineRepository struct {
+	machines map[string]*Machine
+	mu       sync.RWMutex
+	log      *logger.Logger 
 }
 
-// **HandleSaleEvent อัปเดตสต็อกเมื่อมีการขายสินค้า**
-func (s *SaleSubscriber) HandleSaleEvent(data []byte) {
-	// จำลองการอ่านข้อมูลจาก JSON
-	machineID := "001" // ควรใช้ JSON Unmarshal จริง ๆ
-	sold := 2
-
-	s.repo.UpdateStock(machineID, -sold)
-	fmt.Printf("Sale event processed for machine %s, sold %d\n", machineID, sold)
+// **NewMachineRepository สร้าง Repository ใหม่**
+func NewMachineRepository() *MachineRepository {
+	return &MachineRepository{
+		machines: make(map[string]*Machine),
+		log:      logger.NewLogger(),
+	}
 }
 
-// **RefillSubscriber รับ event เมื่อมีการเติมสินค้า**
-type RefillSubscriber struct {
-	repo *MachineRepository
+// **AddMachine เพิ่มเครื่องจักรใหม่**
+func (r *MachineRepository) AddMachine(id string, stock int) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.machines[id] = &Machine{ID: id, StockLevel: stock}
+	r.log.Info("Machine %s added with stock %d", id, stock) 
 }
 
-// **NewRefillSubscriber สร้าง Subscriber สำหรับ Refill Events**
-func NewRefillSubscriber(repo *MachineRepository) *RefillSubscriber {
-	return &RefillSubscriber{repo: repo}
+// **UpdateStock อัปเดตสต็อกของเครื่องจักร**
+func (r *MachineRepository) UpdateStock(id string, amount int) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if machine, exists := r.machines[id]; exists {
+		machine.StockLevel += amount
+		r.log.Info("Machine %s updated. New stock: %d", machine.ID, machine.StockLevel) 
+	} else {
+		r.log.Error("Machine %s not found", id)
+	}
 }
 
-// **HandleRefillEvent อัปเดตสต็อกเมื่อมีการเติมสินค้า**
-func (r *RefillSubscriber) HandleRefillEvent(data []byte) {
-	// จำลองการอ่านข้อมูลจาก JSON
-	machineID := "002"
-	refill := 5
 
-	r.repo.UpdateStock(machineID, refill)
-	fmt.Printf("Refill event processed for machine %s, refill %d\n", machineID, refill)
+func (r *MachineRepository) GetMachine(id string) (*Machine, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	machine, exists := r.machines[id]
+	return machine, exists
+}
+
+
+func (r *MachineRepository) ListMachines() []*Machine {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	machines := []*Machine{}
+	for _, machine := range r.machines {
+		machines = append(machines, machine)
+	}
+	return machines
 }

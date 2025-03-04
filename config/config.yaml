@@ -1,5 +1,5 @@
 kafka:
   brokers:
-    - "localhost:9092"
-  topic: "machine-events"
-  group_id: "machine-group"
+    - localhost:9093
+  topic: machine-events
+  group_id: machine-group

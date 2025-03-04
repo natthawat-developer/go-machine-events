@@ -15,7 +15,6 @@ go-machine-events
 │  └─ config.yaml
 ├─ docker-compose.yml
 ├─ go.mod
-├─ go.sum
 ├─ internal
 │  ├─ events
 │  │  ├─ refill_event.go
@@ -36,10 +35,20 @@ go-machine-events
 │  │  ├─ consumer.go
 │  │  ├─ kafka_client.go
 │  │  └─ producer.go
-│  └─ logger
-│     └─ logger.go
+│  ├─ logger
+│  │  └─ logger.go
+│  └─ utils
+│     └─ event_generator.go
 └─ test
-   ├─ machine_test.go
-   └─ pubsub_test.go
 
 ```
+
+
+# เรียกใช้ Producer (สร้าง Event)
+go run cmd/producer/main.go  
+
+# เรียกใช้ Consumer (รับ Event)
+go run cmd/consumer/main.go  
+
+# รัน Application หลัก
+go run cmd/app/main.go

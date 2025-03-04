@@ -1,41 +1,49 @@
 package main
 
 import (
+	"go-machine-events/config"
 	"go-machine-events/internal/machine"
 	"go-machine-events/internal/pubsub"
 	"go-machine-events/pkg/logger"
+	"go-machine-events/pkg/utils"
 	"time"
 )
 
 func main() {
-	log := logger.NewLogger() // ✅ ใช้ logger
+	log := logger.NewLogger()
 
-	// สร้างเครื่องจักร
+	cfg := config.LoadConfig()
+	if cfg == nil {
+		log.Fatal("Failed to load configuration")
+		return
+	}
+
 	machineRepo := machine.NewMachineRepository()
 	machineRepo.AddMachine("001", 10)
 	machineRepo.AddMachine("002", 10)
 	machineRepo.AddMachine("003", 10)
 
-	// ✅ ใช้ NewPubSub และเช็ค error
-	pubsubService, err := pubsub.NewPubSub([]string{"localhost:9092"}, "machine-events")
+	pubsubService, err := pubsub.NewPubSub(cfg.Kafka.Brokers, cfg.Kafka.Topic)
 	if err != nil {
-		log.Fatal("Failed to initialize PubSub: %v", err) // ✅ ใช้ log.Fatal()
+		log.Fatal("Failed to initialize PubSub: %v", err)
 	}
 	defer pubsubService.Close()
 
-	// ✅ ใช้ machine.NewSaleSubscriber
 	saleSub := machine.NewSaleSubscriber(machineRepo)
 	refillSub := machine.NewRefillSubscriber(machineRepo)
 
-	// ✅ สมัคร subscriber โดยใช้ handler function
 	pubsubService.Subscribe("sale", saleSub.HandleSaleEvent)
 	pubsubService.Subscribe("refill", refillSub.HandleRefillEvent)
 
-	// ✅ ส่ง Events จำลอง
-	pubsubService.PublishEvent([]byte(`{"type": "sale", "sold": 2, "machine_id": "001"}`))
-	pubsubService.PublishEvent([]byte(`{"type": "refill", "refill": 5, "machine_id": "002"}`))
+	for i := 0; i < 5; i++ {
+		event, err := utils.GenerateEvent()
+		if err != nil {
+			log.Error("Error generating event: %v", err)
+			continue
+		}
+		pubsubService.PublishEvent(event)
+	}
 
-	// รอให้ Kafka ประมวลผล
 	time.Sleep(5 * time.Second)
-	log.Info("Done!") // ✅ ใช้ log.Info()
+	log.Info("Done!")
 }

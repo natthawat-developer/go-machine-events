@@ -2,21 +2,24 @@ package kafka
 
 import (
 	"context"
-	"log"
+	"go-machine-events/pkg/logger"
 
 	"github.com/IBM/sarama"
 )
 
 // KafkaClient ใช้จัดการ Kafka Producer และ Consumer
 type KafkaClient struct {
-	brokers      []string
-	topic        string
-	producer     sarama.SyncProducer
+	brokers       []string
+	topic         string
+	producer      sarama.SyncProducer
 	consumerGroup sarama.ConsumerGroup
+	log           *logger.Logger 
 }
 
 // NewKafkaClient สร้าง KafkaClient ใหม่
 func NewKafkaClient(brokers []string, topic string, groupID string) (*KafkaClient, error) {
+	log := logger.NewLogger() 
+
 	config := sarama.NewConfig()
 	config.Version = sarama.V2_8_0_0
 
@@ -26,6 +29,7 @@ func NewKafkaClient(brokers []string, topic string, groupID string) (*KafkaClien
 
 	producer, err := sarama.NewSyncProducer(brokers, config)
 	if err != nil {
+		log.Error("Error creating Kafka producer: %v", err) // ✅ ใช้ log.Error()
 		return nil, err
 	}
 
@@ -34,14 +38,18 @@ func NewKafkaClient(brokers []string, topic string, groupID string) (*KafkaClien
 
 	consumerGroup, err := sarama.NewConsumerGroup(brokers, groupID, config)
 	if err != nil {
+		log.Error("Error creating Kafka consumer group: %v", err) // ✅ ใช้ log.Error()
 		return nil, err
 	}
 
+	log.Info("Kafka client initialized successfully")
+
 	return &KafkaClient{
-		brokers:      brokers,
-		topic:        topic,
-		producer:     producer,
+		brokers:       brokers,
+		topic:         topic,
+		producer:      producer,
 		consumerGroup: consumerGroup,
+		log:           log, 
 	}, nil
 }
 
@@ -54,11 +62,11 @@ func (kc *KafkaClient) PublishEvent(message []byte) error {
 
 	_, _, err := kc.producer.SendMessage(msg)
 	if err != nil {
-		log.Printf("Error publishing message to Kafka: %v", err)
+		kc.log.Error("Error publishing message to Kafka: %v", err) // ✅ ใช้ log.Error()
 		return err
 	}
 
-	log.Println("Message published successfully")
+	kc.log.Info("Message published successfully to Kafka")
 	return nil
 }
 
@@ -71,11 +79,11 @@ func (kc *KafkaClient) Subscribe(callback func([]byte)) error {
 		for {
 			err := kc.consumerGroup.Consume(ctx, []string{kc.topic}, handler)
 			if err != nil {
-				log.Printf("Error consuming messages: %v", err)
+				kc.log.Error("Error consuming messages: %v", err) // ✅ ใช้ log.Error()
 			}
 		}
 	}()
 
-	log.Println("Kafka Consumer started...")
+	kc.log.Info("Kafka Consumer started...")
 	return nil
 }
