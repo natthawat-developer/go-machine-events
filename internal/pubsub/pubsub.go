@@ -1,6 +1,7 @@
 package pubsub
 
 import (
+	"encoding/json"
 	"log"
 
 	"github.com/IBM/sarama"
@@ -41,7 +42,7 @@ func (p *PubSub) Subscribe(topic string, handler func([]byte)) {
 	log.Printf("Subscribed to topic: %s\n", topic)
 }
 
-// **StartListening เริ่มฟัง event จาก Kafka**
+
 func (p *PubSub) StartListening() {
 	partitionConsumer, err := p.consumer.ConsumePartition(p.topic, 0, sarama.OffsetNewest)
 	if err != nil {
@@ -52,14 +53,29 @@ func (p *PubSub) StartListening() {
 	log.Println("Kafka Subscriber started...")
 
 	for msg := range partitionConsumer.Messages() {
-		topic := p.topic
-		if handler, found := p.handlers[topic]; found {
+		// ✅ แปลง JSON หา type ก่อน
+		var event map[string]interface{}
+		err := json.Unmarshal(msg.Value, &event)
+		if err != nil {
+			log.Printf("Error parsing event: %v\n", err)
+			continue
+		}
+
+		// ✅ หา "type" เพื่อเรียก Handler ที่ถูกต้อง
+		eventType, ok := event["type"].(string)
+		if !ok {
+			log.Println("Invalid event type")
+			continue
+		}
+
+		if handler, found := p.handlers[eventType]; found {
 			handler(msg.Value)
 		} else {
-			log.Printf("No handler found for topic: %s\n", topic)
+			log.Printf("No handler found for event type: %s\n", eventType)
 		}
 	}
 }
+
 
 // **PublishEvent ส่ง Event ไป Kafka**
 func (p *PubSub) PublishEvent(event []byte) error {

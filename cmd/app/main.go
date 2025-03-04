@@ -29,25 +29,29 @@ func main() {
 	}
 	defer pubsubService.Close()
 
-	go func() {
-		saleSub := machine.NewSaleSubscriber(machineRepo)
-		refillSub := machine.NewRefillSubscriber(machineRepo)
+	// ✅ Subscribe ก่อนเริ่มฟัง Kafka
+	saleSub := machine.NewSaleSubscriber(machineRepo)
+	refillSub := machine.NewRefillSubscriber(machineRepo)
 
-		pubsubService.Subscribe("sale", saleSub.HandleSaleEvent)
-		pubsubService.Subscribe("refill", refillSub.HandleRefillEvent)
-	}()
+	pubsubService.Subscribe("sale", saleSub.HandleSaleEvent)
+	pubsubService.Subscribe("refill", refillSub.HandleRefillEvent)
 
+	// ✅ เริ่มฟัง Kafka Event
+	go pubsubService.StartListening()
+
+	// ✅ ส่ง Event จำลองไป Kafka
 	go func() {
-		for range 50 {
+		for i := 0; i < 10; i++ {
 			event, err := utils.GenerateEvent()
 			if err != nil {
 				log.Error("Error generating event: %v", err)
 				continue
 			}
 			pubsubService.PublishEvent(event)
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(500 * time.Millisecond) // ✅ ให้เวลาระหว่าง Event ชัดขึ้น
 		}
 	}()
 
-	select {}
+	// ✅ ป้องกันโปรแกรมจบ
+	select {} 
 }

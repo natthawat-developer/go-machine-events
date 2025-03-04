@@ -32,17 +32,19 @@ func NewSaleSubscriber(repo *MachineRepository) *SaleSubscriber {
 }
 
 func (s *SaleSubscriber) HandleSaleEvent(data []byte) {
-	var event EventSale
-	err := json.Unmarshal(data, &event)
-	if err != nil {
-		s.log.Error("Failed to parse Sale Event: %v", err)
-		return
-	}
+    s.log.Info("Received Sale Event: %s", string(data))
 
+    var event EventSale
+    err := json.Unmarshal(data, &event)
+    if err != nil {
+        s.log.Error("Failed to parse Sale Event: %v", err)
+        return
+    }
 
-	s.repo.UpdateStock(event.MachineID, -event.Sold)
-	s.log.Info("Sale event processed for machine %s, sold %d", event.MachineID, event.Sold)
+    s.repo.UpdateStock(event.MachineID, -event.Sold)
+    s.log.Info("Sale event processed for machine %s, sold %d", event.MachineID, event.Sold)
 }
+
 
 
 type RefillSubscriber struct {
@@ -59,14 +61,15 @@ func NewRefillSubscriber(repo *MachineRepository) *RefillSubscriber {
 }
 
 func (r *RefillSubscriber) HandleRefillEvent(data []byte) {
-	var event EventRefill
-	err := json.Unmarshal(data, &event)
-	if err != nil {
-		r.log.Error("Failed to parse Refill Event: %v", err)
-		return
-	}
+    r.log.Info("Received Refill Event: %s", string(data))
 
+    var event EventRefill
+    err := json.Unmarshal(data, &event)
+    if err != nil {
+        r.log.Error("Failed to parse Refill Event: %v", err)
+        return
+    }
 
-	r.repo.UpdateStock(event.MachineID, event.Refill)
-	r.log.Info("Refill event processed for machine %s, refill %d", event.MachineID, event.Refill)
+    r.repo.UpdateStock(event.MachineID, event.Refill)
+    r.log.Info("Refill event processed for machine %s, refill %d", event.MachineID, event.Refill)
 }
