@@ -7,7 +7,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// Struct สำหรับเก็บค่าการตั้งค่า
 type Config struct {
 	Kafka struct {
 		Brokers []string `yaml:"brokers"`

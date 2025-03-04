@@ -29,21 +29,25 @@ func main() {
 	}
 	defer pubsubService.Close()
 
-	saleSub := machine.NewSaleSubscriber(machineRepo)
-	refillSub := machine.NewRefillSubscriber(machineRepo)
+	go func() {
+		saleSub := machine.NewSaleSubscriber(machineRepo)
+		refillSub := machine.NewRefillSubscriber(machineRepo)
 
-	pubsubService.Subscribe("sale", saleSub.HandleSaleEvent)
-	pubsubService.Subscribe("refill", refillSub.HandleRefillEvent)
+		pubsubService.Subscribe("sale", saleSub.HandleSaleEvent)
+		pubsubService.Subscribe("refill", refillSub.HandleRefillEvent)
+	}()
 
-	for i := 0; i < 5; i++ {
-		event, err := utils.GenerateEvent()
-		if err != nil {
-			log.Error("Error generating event: %v", err)
-			continue
+	go func() {
+		for range 50 {
+			event, err := utils.GenerateEvent()
+			if err != nil {
+				log.Error("Error generating event: %v", err)
+				continue
+			}
+			pubsubService.PublishEvent(event)
+			time.Sleep(100 * time.Millisecond)
 		}
-		pubsubService.PublishEvent(event)
-	}
+	}()
 
-	time.Sleep(5 * time.Second)
-	log.Info("Done!")
+	select {}
 }
