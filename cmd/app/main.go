@@ -21,22 +21,19 @@ func main() {
 		return
 	}
 
-	// ✅ สร้าง Machine Repository
 	machineRepo := machine.NewMachineRepository()
 	machineRepo.AddMachine("001", 10)
 	machineRepo.AddMachine("002", 10)
 	machineRepo.AddMachine("003", 10)
 
-	// ✅ สร้าง PubSub
 	pubsubService, err := pubsub.NewPubSub(cfg.Kafka.Brokers, cfg.Kafka.Topic)
 	if err != nil {
 		log.Fatal("Failed to initialize PubSub: %v", err)
 	}
 	defer pubsubService.Close()
 
-	// Subscribe ก่อนเริ่มฟัง Kafka
-	saleService := services.NewSaleService(machineRepo, pubsubService)     // Create SaleService
-	refillService := services.NewRefillService(machineRepo, pubsubService) // Create RefillService
+	saleService := services.NewSaleService(machineRepo, pubsubService)
+	refillService := services.NewRefillService(machineRepo, pubsubService)
 
 	pubsubService.Subscribe("sale", func(data []byte) {
 		var event events.MachineSaleEvent
@@ -56,22 +53,19 @@ func main() {
 		refillService.HandleRefill(event)
 	})
 
-	// ✅ เริ่มฟัง Kafka Event
 	go pubsubService.StartListening()
 
-	// ✅ ส่ง Event จำลองไป Kafka
 	go func() {
-		for i := 0; i < 10; i++ {
+		for range 5 {
 			event, err := utils.GenerateEvent()
 			if err != nil {
 				log.Error("Error generating event: %v", err)
 				continue
 			}
 			pubsubService.PublishEvent(event)
-			time.Sleep(500 * time.Millisecond) // ✅ ให้เวลาระหว่าง Event ชัดขึ้น
+			time.Sleep(500 * time.Millisecond)
 		}
 	}()
 
-	// ✅ ป้องกันโปรแกรมจบ
 	select {}
 }
